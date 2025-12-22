@@ -1,0 +1,14 @@
+{
+  "shader_class_path": "./../../shader",
+  "source_class_path": "./../Source",
+  "fragment_class": "FragmentShader",
+  "vertex_class": "VertexShader",
+  "mixin_class": "CustomShaderProgramable",
+  "matrix_3x3_class": "Matrix3x3",
+  "matrix_path": "./../../../Matrix/matrix",
+
+  "program_path": "./Program/",
+
+  "shader_class_path_back": "./../shader",
+  "shader_program_mixin_class": "ShaderProgramMixin"
+}
