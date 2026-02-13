@@ -4,6 +4,15 @@ import os
 from typing import TypedDict
 from dataclasses import dataclass
 
+'''
+
+Usage:
+py shader_js_gen.py <file>
+
+if <file> == shader_souces or all, generate outputs for all shaders in shader_sources folder.
+
+'''
+
 tab = "  "
 
 class Config(TypedDict):
@@ -70,6 +79,7 @@ def fileNameToShaderDetail(path: str) -> ShaderDetails:
   cty = ty.capitalize()
   return ShaderDetails(full_file_name, name, cap_name, short_ty, ty, cty)
 
+# add any new types here
 def uniformTypeToSetterStrings(ty: str, config: Config) -> tuple[str,str,str]:
   if ty == "float":
     return ("a: GLfloat", "Float", "a")
@@ -81,6 +91,10 @@ def uniformTypeToSetterStrings(ty: str, config: Config) -> tuple[str,str,str]:
     return ("a: GLfloat, b: GLfloat, c: GLfloat, d: GLfloat", "Float4", "a, b, c, d")
   elif ty == "mat3":
     return (f"mat: Matrix.{config['matrix_3x3_class']}", "Mat3", "mat.matrix")
+  elif ty == "mat4": #todo mat4 config class
+    return (f"mat: Matrix.{config['matrix_3x3_class']}", "Mat4", "mat.matrix")
+  elif ty == "sampler2D":
+    return ("i: GLint", "Int", "i")
   return ("", "", "")
 
 def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, attributes: list[Attribute] = []) -> str:
