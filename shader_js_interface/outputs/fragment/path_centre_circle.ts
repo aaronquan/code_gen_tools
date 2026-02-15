@@ -19,6 +19,7 @@ export function PathCentreCircleShaderProgramMix<TBase extends Shader.CustomShad
     private declare right_uniform_location: WebGLUniformLocation | null;
     private declare top_uniform_location: WebGLUniformLocation | null;
     private declare bot_uniform_location: WebGLUniformLocation | null;
+    private declare mid_colour_uniform_location: WebGLUniformLocation | null;
     private declare circle_radius_uniform_location: WebGLUniformLocation | null;
     private declare size_uniform_location: WebGLUniformLocation | null;
     private declare colour_uniform_location: WebGLUniformLocation | null;
@@ -36,6 +37,7 @@ export function PathCentreCircleShaderProgramMix<TBase extends Shader.CustomShad
       this.right_uniform_location = this.program.getUniformLocation('u_right');
       this.top_uniform_location = this.program.getUniformLocation('u_top');
       this.bot_uniform_location = this.program.getUniformLocation('u_bot');
+      this.mid_colour_uniform_location = this.program.getUniformLocation('u_mid_colour');
       this.circle_radius_uniform_location = this.program.getUniformLocation('u_circle_radius');
       this.size_uniform_location = this.program.getUniformLocation('u_size');
       this.colour_uniform_location = this.program.getUniformLocation('u_colour');
@@ -52,6 +54,9 @@ export function PathCentreCircleShaderProgramMix<TBase extends Shader.CustomShad
     }
     setBot(a: GLfloat){
       this.program.setFloat(this.bot_uniform_location!, a);
+    }
+    setMidColour(a: GLfloat, b: GLfloat, c: GLfloat){
+      this.program.setFloat3(this.mid_colour_uniform_location!, a, b, c);
     }
     setCircleRadius(a: GLfloat){
       this.program.setFloat(this.circle_radius_uniform_location!, a);
