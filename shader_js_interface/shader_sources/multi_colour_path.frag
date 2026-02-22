@@ -5,7 +5,7 @@ varying vec2 v_relative;
 
 uniform vec3 u_left_colour;
 uniform vec3 u_right_colour;
-uniform vec3 u_top_colour;
+uniform vec3 u_top_colour; // colour
 uniform vec3 u_bot_colour;
 uniform vec3 u_mid_colour;
 uniform float u_size; // between 0 and 0.5

@@ -41,6 +41,7 @@ class Uniform:
   full_var_name: str
   var_name: str
   type_name: str
+  comment: str
 
 @dataclass
 class Attribute:
@@ -49,9 +50,17 @@ class Attribute:
   type_name: str
 
 def genUniform(line: str) -> Uniform:
-  sp = line.split(' ')
-  fvn = sp[2][:-1]
-  return Uniform(fvn, fvn[2:] if fvn.startswith("u_") else fvn, sp[1])
+  parts = line.split(";")
+  sp = parts[0].split(' ')
+  fvn = sp[2]
+
+  find_comment = parts[1].split("//")
+  comment = ""
+  if len(find_comment) > 1:
+    comment = find_comment[1]
+    # TODO remove white space function here
+    print(f"comment: {comment}")
+  return Uniform(fvn, fvn[2:] if fvn.startswith("u_") else fvn, sp[1], comment)
 
 def hasMatrixUniform(uniforms: list[Uniform]) -> bool:
   for uni in uniforms:
@@ -229,7 +238,7 @@ def main():
       for file in os.listdir("shader_sources"):
         generateFromFile(f"shader_sources/{file}", config)
     else:
-      generateFromFile(fn, config)
+      generateFromFile(f"shader_sources/{fn}", config)
 
   generateCollectorFile("fragment", config)
   generateCollectorFile("vertex", config)
