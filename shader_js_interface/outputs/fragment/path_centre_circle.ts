@@ -1,5 +1,6 @@
 import PathCentreCircle from './../Source/path_centre_circle.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class PathCentreCircleFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -26,11 +27,10 @@ export function PathCentreCircleShaderProgramMix<TBase extends Shader.CustomShad
     private declare background_colour_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'PathCentreCircleShader';
-      if(PathCentreCircleFragmentShader.shader){
-        this.program.addFragment(PathCentreCircleFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!PathCentreCircleFragmentShader.shader){
+        PathCentreCircleFragmentShader.load();
       }
+      this.program.addFragment(PathCentreCircleFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.left_uniform_location = this.program.getUniformLocation('u_left');

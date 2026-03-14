@@ -26,6 +26,7 @@ class Config(TypedDict):
   program_path: str
   shader_class_path_back: str
   shader_program_mixin_class: str
+  webgl_class_path: str
 
 @dataclass
 class ShaderDetails:
@@ -41,7 +42,7 @@ class Uniform:
   full_var_name: str
   var_name: str
   type_name: str
-  comment: str
+  comments: list[str]
 
 @dataclass
 class Attribute:
@@ -55,10 +56,11 @@ def genUniform(line: str) -> Uniform:
   fvn = sp[2]
 
   find_comment = parts[1].split("//")
-  comment = ""
+  comment = []
   if len(find_comment) > 1:
-    comment = find_comment[1]
+    full_comment = find_comment[1]
     # TODO remove white space function here
+    comment = full_comment.split()
     print(f"comment: {comment}")
   return Uniform(fvn, fvn[2:] if fvn.startswith("u_") else fvn, sp[1], comment)
 
@@ -113,7 +115,8 @@ def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, att
   sf = f"import {sd.cap_name} from '{conf['source_class_path']}/{sd.file_name}?raw';\n"
   if hasMatrixUniform(uniforms):
     sf += f"import * as Matrix from '{conf['matrix_path']}';\n"
-  sf += f"import * as Shader from '{conf['shader_class_path']}';\n\n"
+  sf += f"import * as Shader from '{conf['shader_class_path']}';\n"
+  sf += f"import * as WebGL from '{conf['webgl_class_path']}';\n\n"
   # shader source class
   sf += f"export class {sd.cap_name}{sd.cap_type_name}Shader{{\n"
   sf += f"{tab}static shader?: Shader.{class_type_name};\n"
@@ -138,7 +141,11 @@ def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, att
   #add uniform declarations
   for uni in uniforms:
     sf += f"{tab}{tab}private declare {uni.var_name}_uniform_location: WebGLUniformLocation | null;\n"
+
+
   # setup fragment function
+
+  ''' old fragment function 
   sf += f"{tab}{tab}protected override setup{sd.cap_type_name}(){{\n"
   sf += f"{tab}{tab}{tab}this.{sd.type_name}_name = '{sd.cap_name}Shader';\n"
   sf += f"{tab}{tab}{tab}if({sd.cap_name}{sd.cap_type_name}Shader.shader){{\n"
@@ -146,6 +153,16 @@ def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, att
   sf += f"{tab}{tab}{tab}}}else{{\n"
   sf += f"{tab}{tab}{tab}{tab}throw new Error(`${{this.{sd.type_name}_name}} not loaded`);\n"
   sf += f"{tab}{tab}{tab}}}\n"
+  sf += f"{tab}{tab}this.program.add{sd.cap_type_name}({sd.cap_name}{sd.cap_type_name}Shader.shader)\n"
+  sf += f"{tab}{tab}}}\n"
+  '''
+
+  sf += f"{tab}{tab}protected override setup{sd.cap_type_name}(){{\n"
+  sf += f"{tab}{tab}{tab}this.{sd.type_name}_name = '{sd.cap_name}Shader';\n"
+  sf += f"{tab}{tab}{tab}if(!{sd.cap_name}{sd.cap_type_name}Shader.shader){{\n"
+  sf += f"{tab}{tab}{tab}{tab}{sd.cap_name}{sd.cap_type_name}Shader.load();\n"
+  sf += f"{tab}{tab}{tab}}}\n"
+  sf += f"{tab}{tab}{tab}this.program.add{sd.cap_type_name}({sd.cap_name}{sd.cap_type_name}Shader.shader!);\n"
   sf += f"{tab}{tab}}}\n"
 
   #attribute location init (vertex only)
@@ -168,10 +185,28 @@ def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, att
     sf += f"{tab}{tab}{tab}this.program.set{utss[1]}(this.{uni.var_name}_uniform_location!, {utss[2]});\n"
     sf += f"{tab}{tab}}}\n"
 
+    sf += add_uniform_comment_functions(uni, conf)
+
+    #if uni.comment
+
   sf += f"{tab}}}\n"
   sf += f"}}\n"
 
   return sf
+
+def add_uniform_comment_functions(uniform: Uniform, conf: Config) -> str:
+  func_str = ""
+  comments_seen = {}
+  for c in uniform.comments:
+    if c in comments_seen:
+      continue
+    if c == 'colour':
+      func_str += f"{tab}{tab}set{capitaliseVariable(uniform.var_name)}FromColourRGB(colour: WebGL.Colour.ColourRGB){{\n"
+      func_str += f"{tab}{tab}{tab}this.program.setFloat3(this.{uniform.var_name}_uniform_location!, colour.red, colour.green, colour.blue);\n"
+      func_str += f"{tab}{tab}}}\n"
+      comments_seen["comment"] = True
+
+  return func_str
 
 def generateFromFile(fn: str, config: Config) -> ShaderDetails:
   sd = fileNameToShaderDetail(fn)
@@ -228,17 +263,21 @@ def generateCollectorFile(ty: str, config: Config):
 
 
 def main():
-  cf = open("config.json")
-  config = json.load(cf)
   #print(config)
   if len(sys.argv) >= 2:
-    fn = sys.argv[1]
-    if fn == "shader_sources" or fn == "all":
-      #all in folder
-      for file in os.listdir("shader_sources"):
-        generateFromFile(f"shader_sources/{file}", config)
-    else:
-      generateFromFile(f"shader_sources/{fn}", config)
+
+    config_file = "config.json" if len(sys.argv) <= 3 else sys.argv[2]
+    with open(config_file) as cf:
+      #cf = open(config_file)
+      config = json.load(cf)
+
+      fn = sys.argv[1]
+      if fn == "shader_sources" or fn == "all":
+        #all in folder
+        for file in os.listdir("shader_sources"):
+          generateFromFile(f"shader_sources/{file}", config)
+      else:
+        generateFromFile(f"shader_sources/{fn}", config)
 
   generateCollectorFile("fragment", config)
   generateCollectorFile("vertex", config)

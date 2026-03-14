@@ -2,6 +2,7 @@ import * as Shader from './../shader';
 import * as Circle from './Program/circle';
 import * as CircleOutline from './Program/circle_outline';
 import * as Colour from './Program/colour';
+import * as ColourTexture from './Program/colour_texture';
 import * as Line from './Program/line';
 import * as MultiColourCentreCirclePath from './Program/multi_colour_centre_circle_path';
 import * as MultiColourPath from './Program/multi_colour_path';
@@ -9,12 +10,14 @@ import * as PathCentreCircle from './Program/path_centre_circle';
 import * as RectOutline from './Program/rect_outline';
 import * as SolidPath from './Program/solid_path';
 import * as SpriteSheet from './Program/sprite_sheet';
+import * as SpriteSheetColour from './Program/sprite_sheet_colour';
 import * as Texture from './Program/texture';
 
 export function loadFragmentShaders(){
   Circle.CircleFragmentShader.load();
   CircleOutline.CircleOutlineFragmentShader.load();
   Colour.ColourFragmentShader.load();
+  ColourTexture.ColourTextureFragmentShader.load();
   Line.LineFragmentShader.load();
   MultiColourCentreCirclePath.MultiColourCentreCirclePathFragmentShader.load();
   MultiColourPath.MultiColourPathFragmentShader.load();
@@ -22,11 +25,13 @@ export function loadFragmentShaders(){
   RectOutline.RectOutlineFragmentShader.load();
   SolidPath.SolidPathFragmentShader.load();
   SpriteSheet.SpriteSheetFragmentShader.load();
+  SpriteSheetColour.SpriteSheetColourFragmentShader.load();
   Texture.TextureFragmentShader.load();
 }
 export const CircleMixin = Circle.CircleShaderProgramMix;
 export const CircleOutlineMixin = CircleOutline.CircleOutlineShaderProgramMix;
 export const ColourMixin = Colour.ColourShaderProgramMix;
+export const ColourTextureMixin = ColourTexture.ColourTextureShaderProgramMix;
 export const LineMixin = Line.LineShaderProgramMix;
 export const MultiColourCentreCirclePathMixin = MultiColourCentreCirclePath.MultiColourCentreCirclePathShaderProgramMix;
 export const MultiColourPathMixin = MultiColourPath.MultiColourPathShaderProgramMix;
@@ -34,4 +39,5 @@ export const PathCentreCircleMixin = PathCentreCircle.PathCentreCircleShaderProg
 export const RectOutlineMixin = RectOutline.RectOutlineShaderProgramMix;
 export const SolidPathMixin = SolidPath.SolidPathShaderProgramMix;
 export const SpriteSheetMixin = SpriteSheet.SpriteSheetShaderProgramMix;
+export const SpriteSheetColourMixin = SpriteSheetColour.SpriteSheetColourShaderProgramMix;
 export const TextureMixin = Texture.TextureShaderProgramMix;

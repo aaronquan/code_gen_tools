@@ -1,5 +1,6 @@
 import RectOutline from './../Source/rect_outline.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class RectOutlineFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -19,11 +20,10 @@ export function RectOutlineShaderProgramMix<TBase extends Shader.CustomShaderPro
     private declare outline_ratio_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'RectOutlineShader';
-      if(RectOutlineFragmentShader.shader){
-        this.program.addFragment(RectOutlineFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!RectOutlineFragmentShader.shader){
+        RectOutlineFragmentShader.load();
       }
+      this.program.addFragment(RectOutlineFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.outline_colour_uniform_location = this.program.getUniformLocation('u_outline_colour');

@@ -1,5 +1,6 @@
 import SolidPath from './../Source/solid_path.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class SolidPathFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -24,11 +25,10 @@ export function SolidPathShaderProgramMix<TBase extends Shader.CustomShaderProgr
     private declare background_colour_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'SolidPathShader';
-      if(SolidPathFragmentShader.shader){
-        this.program.addFragment(SolidPathFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!SolidPathFragmentShader.shader){
+        SolidPathFragmentShader.load();
       }
+      this.program.addFragment(SolidPathFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.left_uniform_location = this.program.getUniformLocation('u_left');

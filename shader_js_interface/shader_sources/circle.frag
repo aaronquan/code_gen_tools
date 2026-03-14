@@ -5,8 +5,8 @@ varying vec2 v_relative;
 
 uniform vec2 u_centre;
 uniform float u_radius;
-uniform vec3 u_circle_colour;
-uniform vec3 u_background_colour;
+uniform vec3 u_circle_colour; //colour
+uniform vec3 u_background_colour; //colour
 
 void main(){
   vec2 middle = vec2(u_centre);
