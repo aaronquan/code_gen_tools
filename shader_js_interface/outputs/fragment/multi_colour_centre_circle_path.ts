@@ -1,5 +1,6 @@
 import MultiColourCentreCirclePath from './../Source/multi_colour_centre_circle_path.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class MultiColourCentreCirclePathFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -25,11 +26,10 @@ export function MultiColourCentreCirclePathShaderProgramMix<TBase extends Shader
     private declare background_colour_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'MultiColourCentreCirclePathShader';
-      if(MultiColourCentreCirclePathFragmentShader.shader){
-        this.program.addFragment(MultiColourCentreCirclePathFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!MultiColourCentreCirclePathFragmentShader.shader){
+        MultiColourCentreCirclePathFragmentShader.load();
       }
+      this.program.addFragment(MultiColourCentreCirclePathFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.left_colour_uniform_location = this.program.getUniformLocation('u_left_colour');
@@ -44,17 +44,32 @@ export function MultiColourCentreCirclePathShaderProgramMix<TBase extends Shader
     setLeftColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.left_colour_uniform_location!, a, b, c);
     }
+    setLeftColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.left_colour_uniform_location!, colour.red, colour.green, colour.blue);
+    }
     setRightColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.right_colour_uniform_location!, a, b, c);
+    }
+    setRightColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.right_colour_uniform_location!, colour.red, colour.green, colour.blue);
     }
     setTopColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.top_colour_uniform_location!, a, b, c);
     }
+    setTopColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.top_colour_uniform_location!, colour.red, colour.green, colour.blue);
+    }
     setBotColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.bot_colour_uniform_location!, a, b, c);
     }
+    setBotColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.bot_colour_uniform_location!, colour.red, colour.green, colour.blue);
+    }
     setMidColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.mid_colour_uniform_location!, a, b, c);
+    }
+    setMidColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.mid_colour_uniform_location!, colour.red, colour.green, colour.blue);
     }
     setCircleRadius(a: GLfloat){
       this.program.setFloat(this.circle_radius_uniform_location!, a);
@@ -64,6 +79,9 @@ export function MultiColourCentreCirclePathShaderProgramMix<TBase extends Shader
     }
     setBackgroundColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.background_colour_uniform_location!, a, b, c);
+    }
+    setBackgroundColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.background_colour_uniform_location!, colour.red, colour.green, colour.blue);
     }
   }
 }

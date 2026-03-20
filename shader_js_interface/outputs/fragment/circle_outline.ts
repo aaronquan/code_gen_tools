@@ -1,5 +1,6 @@
 import CircleOutline from './../Source/circle_outline.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class CircleOutlineFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -22,11 +23,10 @@ export function CircleOutlineShaderProgramMix<TBase extends Shader.CustomShaderP
     private declare background_colour_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'CircleOutlineShader';
-      if(CircleOutlineFragmentShader.shader){
-        this.program.addFragment(CircleOutlineFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!CircleOutlineFragmentShader.shader){
+        CircleOutlineFragmentShader.load();
       }
+      this.program.addFragment(CircleOutlineFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.centre_uniform_location = this.program.getUniformLocation('u_centre');

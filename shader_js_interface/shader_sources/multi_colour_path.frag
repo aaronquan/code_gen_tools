@@ -3,13 +3,13 @@ precision mediump float;
 varying vec2 v_position;
 varying vec2 v_relative;
 
-uniform vec3 u_left_colour;
-uniform vec3 u_right_colour;
+uniform vec3 u_left_colour; //colour
+uniform vec3 u_right_colour; //colour
 uniform vec3 u_top_colour; // colour
-uniform vec3 u_bot_colour;
-uniform vec3 u_mid_colour;
+uniform vec3 u_bot_colour; //colour
+uniform vec3 u_mid_colour; //colour
 uniform float u_size; // between 0 and 0.5
-uniform vec3 u_background_colour;
+uniform vec3 u_background_colour; //colour
 
 void main(){
   vec2 uv = v_relative;
