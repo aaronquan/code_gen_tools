@@ -1,5 +1,6 @@
 import CircleOnly from './../Source/circle_only.frag?raw';
 import * as Shader from './../../shader';
+import * as WebGL from './../../../globals';
 
 export class CircleOnlyFragmentShader{
   static shader?: Shader.FragmentShader;
@@ -20,11 +21,10 @@ export function CircleOnlyShaderProgramMix<TBase extends Shader.CustomShaderProg
     private declare circle_colour_uniform_location: WebGLUniformLocation | null;
     protected override setupFragment(){
       this.fragment_name = 'CircleOnlyShader';
-      if(CircleOnlyFragmentShader.shader){
-        this.program.addFragment(CircleOnlyFragmentShader.shader)
-      }else{
-        throw new Error(`${this.fragment_name} not loaded`);
+      if(!CircleOnlyFragmentShader.shader){
+        CircleOnlyFragmentShader.load();
       }
+      this.program.addFragment(CircleOnlyFragmentShader.shader!);
     }
     protected override addFragmentUniformLocations(): void{
       this.centre_uniform_location = this.program.getUniformLocation('u_centre');
@@ -39,6 +39,9 @@ export function CircleOnlyShaderProgramMix<TBase extends Shader.CustomShaderProg
     }
     setCircleColour(a: GLfloat, b: GLfloat, c: GLfloat){
       this.program.setFloat3(this.circle_colour_uniform_location!, a, b, c);
+    }
+    setCircleColourFromColourRGB(colour: WebGL.Colour.ColourRGB){
+      this.program.setFloat3(this.circle_colour_uniform_location!, colour.red, colour.green, colour.blue);
     }
   }
 }

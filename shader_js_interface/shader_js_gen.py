@@ -279,6 +279,6 @@ def main():
       else:
         generateFromFile(f"shader_sources/{fn}", config)
 
-  generateCollectorFile("fragment", config)
-  generateCollectorFile("vertex", config)
+      generateCollectorFile("fragment", config)
+      generateCollectorFile("vertex", config)
 main()
