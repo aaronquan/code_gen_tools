@@ -1,5 +1,7 @@
 type Int32 = number;
 
+const s = 1;
+
 function check(nums: Int32[]): boolean {
     for(let i = 0; i < nums.length; i++){
         if(isSorted(nums, i)){
