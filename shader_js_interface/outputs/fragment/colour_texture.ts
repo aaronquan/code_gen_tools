@@ -1,6 +1,7 @@
-import ColourTexture from './../Source/colour_texture.frag?raw';
 import * as Shader from './../../shader';
 import * as WebGL from './../../../globals';
+
+const ColourTexture = ``;
 
 export class ColourTextureFragmentShader{
   static shader?: Shader.FragmentShader;

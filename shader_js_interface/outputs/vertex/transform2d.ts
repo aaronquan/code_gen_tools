@@ -1,7 +1,20 @@
-import Transform2d from './../Source/transform2d.vert?raw';
 import * as Matrix from './../../../Matrix/matrix';
 import * as Shader from './../../shader';
 import * as WebGL from './../../../globals';
+
+const Transform2d = `attribute vec2 position;
+
+uniform mat3 u_matrix;
+
+varying vec2 v_position;
+
+void main(){
+  vec2 position = (u_matrix*vec3(position, 1)).xy;
+
+  gl_Position = vec4(position, 1.0, 1.0);
+
+  v_position = position;
+}`;
 
 export class Transform2dVertexShader{
   static shader?: Shader.VertexShader;

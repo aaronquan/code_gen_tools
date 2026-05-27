@@ -108,15 +108,24 @@ def uniformTypeToSetterStrings(ty: str, config: Config) -> tuple[str,str,str]:
     return ("i: GLint", "Int", "i")
   return ("", "", "")
 
-def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, attributes: list[Attribute] = []) -> str:
+def genSourceFile(sd: ShaderDetails, uniforms: list[Uniform],  conf: Config, 
+                  attributes: list[Attribute] = [], shader_source: str="") -> str:
   class_type_name = conf['fragment_class'] if sd.type_name == "fragment" else conf['vertex_class']
   is_vertex = sd.type_name == "vertex"
+  sf = ""
 
-  sf = f"import {sd.cap_name} from '{conf['source_class_path']}/{sd.file_name}?raw';\n"
+  #sf += f"import {sd.cap_name} from '{conf['source_class_path']}/{sd.file_name}?raw';\n" 
+  # # old import (doesn't work with exporting modules)
+
+
   if hasMatrixUniform(uniforms):
     sf += f"import * as Matrix from '{conf['matrix_path']}';\n"
   sf += f"import * as Shader from '{conf['shader_class_path']}';\n"
   sf += f"import * as WebGL from '{conf['webgl_class_path']}';\n\n"
+
+  # source code
+  sf += f"const {sd.cap_name} = `{shader_source}`;\n\n"
+
   # shader source class
   sf += f"export class {sd.cap_name}{sd.cap_type_name}Shader{{\n"
   sf += f"{tab}static shader?: Shader.{class_type_name};\n"
@@ -204,7 +213,12 @@ def add_uniform_comment_functions(uniform: Uniform, conf: Config) -> str:
       func_str += f"{tab}{tab}set{capitaliseVariable(uniform.var_name)}FromColourRGB(colour: WebGL.Colour.ColourRGB){{\n"
       func_str += f"{tab}{tab}{tab}this.program.setFloat3(this.{uniform.var_name}_uniform_location!, colour.red, colour.green, colour.blue);\n"
       func_str += f"{tab}{tab}}}\n"
-      comments_seen["comment"] = True
+      comments_seen["colour"] = True
+    if c == 'coloura':
+      func_str += f"{tab}{tab}set{capitaliseVariable(uniform.var_name)}FromColourRGBA(colour: WebGL.Colour.ColourRGBA){{\n"
+      func_str += f"{tab}{tab}{tab}this.program.setFloat4(this.{uniform.var_name}_uniform_location!, colour.red, colour.green, colour.blue, colour.alpha);\n"
+      func_str += f"{tab}{tab}}}\n"
+      comments_seen["coloura"] = True
 
   return func_str
 
@@ -222,11 +236,10 @@ def generateFromFile(fn: str, config: Config) -> ShaderDetails:
         if line.startswith("attribute"):
           attributes.append(genAttribute(line))
           
-    #print(uniforms)
-    source_file = genSourceFile(sd, uniforms, config, attributes)
-    print(source_file)
-    output = open(f"outputs/{sd.type_name}/{sd.name}.ts", 'w')
-    output.write(source_file)
+      source_file = genSourceFile(sd, uniforms, config, attributes, content)
+      print(source_file)
+      output = open(f"outputs/{sd.type_name}/{sd.name}.ts", 'w')
+      output.write(source_file)
   except FileNotFoundError:
     print("File not found")
   return sd

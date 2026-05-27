@@ -1,6 +1,15 @@
-import Colour from './../Source/colour.frag?raw';
 import * as Shader from './../../shader';
 import * as WebGL from './../../../globals';
+
+const Colour = `precision mediump float;
+
+
+
+uniform vec3 colour; //colour
+
+void main(){
+  gl_FragColor = vec4(colour, 1.0);
+}`;
 
 export class ColourFragmentShader{
   static shader?: Shader.FragmentShader;
