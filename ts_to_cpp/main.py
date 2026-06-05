@@ -62,17 +62,20 @@ def getTypeOfLine(line: str) -> tuple[NodeType, int]:
   i = lwhiteSpaceIndex(line)
   first, i = firstWord(line, i)
   typ = NodeType.FUNCTION
-  print(first)
   if first == "function":
     typ = NodeType.FUNCTION
+    i+=1
   elif first == "for":
     typ = NodeType.FOR
   elif first == "if":
     typ = NodeType.IF
   elif first == "return":
     typ = NodeType.RETURN
+    i+=1
   elif first == "var" or first == "const" or first == "let":
     typ = NodeType.VAR
+    i+=1
+    
   return typ, i
 
 class ASTNode:
@@ -97,8 +100,18 @@ class VariableAssignmentNode:
   value_node: ValueNode 
 
 
-def parseVariableAssignmentLine(line: str) -> VariableAssignmentNode:
-  pass
+def parseVariableAssignmentLine(line: str, i: str) -> VariableAssignmentNode:
+  st = i
+  while i < len(line) and line[i] != '=':
+    i+=1
+  var_name = line[st:i]
+  
+  print(var_name)
+
+  st = i+1
+  print(line[st:])
+
+
 
 def parseFunctionHeader(line: str) -> ASTNode:
   pass
@@ -130,6 +143,7 @@ def main():
           rest = line[i:].lstrip()
           if tp == NodeType.VAR:
             print(rest)
+            parseVariableAssignmentLine(line, i)
     except FileNotFoundError:
       print("not found")
   pass
