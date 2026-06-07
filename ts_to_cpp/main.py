@@ -92,7 +92,7 @@ class OperatorNode:
 @dataclass
 class ValueNode:
   value: ValueNode | str
-  next: OperatorNode | None
+  next: list[OperatorNode]
 
 @dataclass
 class VariableAssignmentNode:
@@ -100,19 +100,32 @@ class VariableAssignmentNode:
   value_node: ValueNode 
 
 
-def parseVariableAssignmentLine(line: str, i: str) -> VariableAssignmentNode:
+def parseVariableAssignmentLine(line: str, i: int) -> VariableAssignmentNode:
   st = i
   while i < len(line) and line[i] != '=':
     i+=1
-  var_name = line[st:i]
-  
-  print(var_name)
+  var_name = line[st:i-1]
 
   st = i+1
   print(line[st:])
 
+  van = VariableAssignmentNode(var_name, parseValueNode(line[st:]))
+  print(van)
+  return van
 
-
+def parseValueNode(s: str) -> ValueNode:
+  if s.startswith("("):
+    # todo
+    return ValueNode("", [])
+  else:
+    i = 0
+    ops = []
+    while i < len(s):
+      if any(s[i] == c for c in operators):
+        print(s[i])
+      i += 1
+    return ValueNode("", ops)
+    
 def parseFunctionHeader(line: str) -> ASTNode:
   pass
 
