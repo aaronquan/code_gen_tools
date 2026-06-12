@@ -1,6 +1,16 @@
 type Int32 = number;
 
-const s = 1;
+type Position = {
+    x: Int32;
+    y: Int32;
+}
+
+const s: Int32 = 1;
+const t: Int32 = (1+(21-s));
+
+function cool(nums: Int32[]=[]): Position { 
+    return {x:1, y:2};
+}
 
 function check(nums: Int32[]): boolean {
     for(let i = 0; i < nums.length; i++){
