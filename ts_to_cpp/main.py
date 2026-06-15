@@ -44,7 +44,7 @@ def nextQuote(s: str, qt:str="'", i:int=0) -> int:
     if s[j] == qt:
       return j
 
-  return j
+  return len(s)
 
 class NodeType(Enum):
   NONE = 0
@@ -207,6 +207,7 @@ class NodeSignature:
   type: NodeType
   index: int
 
+
 def parseFunctionHeader(s: str) -> FunctionNode:
   i = 0
   while i < len(s) and s[i] != "(":
@@ -274,15 +275,17 @@ def nextSyntax(s: str, i: int) -> int:
 class AST:
   def __init__(self):
     self.types = []
-    self.function_nodes = [] # function node
-    self.variable_nodes = []
-    self.type_nodes = []
+    self.function_nodes: list[FunctionNode] = [] # function node
+    self.variable_nodes: list[VariableAssignmentNode] = []
+    self.type_nodes: list[TypeNode] = []
+
+    self.base_nodes: list[NodeSignature] = [] 
 
 def valueNodeToCStr(node: ValueNode) -> str:
   s = ""
-  if node.is_str:
+  if node.is_str and type(node.value) is str:
     s += node.value
-  else:
+  elif type(node.value) is ValueNode:
     s += f"({valueNodeToCStr(node.value)})"
   for op in node.operators:
     s += op.operator + valueNodeToCStr(op.value_node)
@@ -314,17 +317,27 @@ class TypeNode:
   type_name: str
   types: list[Type]
 
+
+
 def parseTypeHeader(s: str):
   eq = s.find("=")
-  name = s[:eq]
+  name = valueRemoveFluff(s[:eq])
   rest = valueRemoveFluff(s[eq+1:])
-  is_single = rest[0] == '{'
+  is_single = rest[0] != '{'
   type_name = rest
   types = []
-  if rest[0] == is_single:
+  if not is_single:
     #struct type
     type_name = ""
   return TypeNode(is_single, name, type_name, types)
+
+def stringToType(s: str) -> Type | None:
+  colon = s.find(":")
+  if colon == -1:
+    return None
+  tp = valueRemoveFluff(s[:colon])
+  name = valueRemoveFluff(s[colon+1:])
+  return Type(tp, name)
 
 def main():
   '''
@@ -340,8 +353,10 @@ def main():
     try:
       with open(fn) as f:
         content = f.read()
-        node_stack = []
+        node_stack: list[NodeSignature] = []
         for line in content.splitlines():
+          if len(line) == 0:
+            continue
           tp, i = getTypeOfLine(line)
           rest = line[i:].lstrip()
           if tp == NodeType.VAR:
@@ -357,6 +372,7 @@ def main():
           elif tp == NodeType.TYPE:
             print(f"type: {rest}")
             node = parseTypeHeader(rest)
+            print(node)
             if node.is_type:
               node_stack.append(NodeSignature(NodeType.TYPE, len(ast.type_nodes)))
               ast.type_nodes.append(node)
@@ -368,9 +384,19 @@ def main():
           else:
             if len(node_stack) >= 1:
               node_sig = node_stack[-1]
+              if node_sig.type == NodeType.TYPE:
+                node = ast.type_nodes[node_sig.index]
+                print(node)
+                typ = stringToType(line)
+                print(f"{typ}")
+                if not typ == None:
+                  node.types.append(typ)
+                
 
               #node = ast.
-              print(f"{node_sig} {line}")
+                print(f"{node} {line}")
+
+        print(ast)
     except FileNotFoundError:
       print("not found")
   pass
