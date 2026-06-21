@@ -3,6 +3,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 
+import parser
 
 
 ts_type_to_ctype = {
@@ -11,7 +12,7 @@ ts_type_to_ctype = {
   "Double": "double",
   "Short": "short",
   "boolean": "bool",
-
+  "string": "std::string"
 }
   
 def insideBrackets(s: str) -> int:
@@ -117,18 +118,44 @@ class OperatorNode:
 
 # 1 + 1 -> VN(OP(+, VN(1), VN(1)))
 
+class ValueNodeType(Enum):
+  STRING = 0
+  VALUENODE = 1
+  DICT = 2
+
+@dataclass
+class DictEntry:
+  key: str
+  value: ValueNode
+
 @dataclass
 class ValueNode:
-  is_str: bool
-  value: ValueNode | str
+  type: ValueNodeType
+  #is_str: bool
+  value_node: ValueNode | None
+  string: str | None
+  dict: list[DictEntry]
   operators: list[OperatorNode]
 
 @dataclass
 class VariableAssignmentNode:
   name: str
   type_hint: str
-  value_node: ValueNode 
+  value_node: ValueNode
+  multi_line: bool
 
+def parseDict(s: str) -> list[DictEntry]:
+  d = []
+  if s.endswith("}"):
+    s = s[:-1]
+  sp = s.split(",")
+  print(sp)
+  for e in sp:
+    ev = e.split(":")
+    if len(ev) == 2:
+      d.append(DictEntry(valueRemoveFluff(ev[0]), parseValueNode(valueRemoveFluff(ev[1]))))
+  print(d)
+  return d
 
 def parseVariableAssignmentLine(line: str, i: int) -> VariableAssignmentNode:
   st = i
@@ -143,25 +170,40 @@ def parseVariableAssignmentLine(line: str, i: int) -> VariableAssignmentNode:
 
   st = i+1
 
-
-  van = VariableAssignmentNode(var_name, type_hint, parseValueNode(line[st:]))
+  final_char = line.rstrip()[-1]
+  van = VariableAssignmentNode(var_name, type_hint, parseValueNode(line[st:]), final_char=="{")
   print(van)
   return van
 
 def parseValueNode(s: str) -> ValueNode:
+  print(s)
   i = lwhiteSpaceIndex(s)
 
   ops, vals = splitOperators(s)
   op_nodes = []
+  typ = ValueNodeType.STRING
   for j in range(len(ops)):
-    is_str = vals[j+1][0] != "("
-    vn = vals[j+1] if is_str else parseValueNode(vals[j+1][1:-1])
-    op_node = OperatorNode(ops[j], ValueNode(is_str, vn, []))
+    typ = ValueNodeType.STRING
+    if vals[j+1][0] == "(":
+
+        typ = ValueNodeType.VALUENODE
+    vn = parseValueNode(vals[j+1][1:-1]) if typ == ValueNodeType.VALUENODE else None
+    string = vals[j+1] if typ == ValueNodeType.STRING else None
+    op_node = OperatorNode(ops[j], ValueNode(typ, vn, string, [], []))
     op_nodes.append(op_node)
-  is_str = vals[0][0] != "("
-  vn = vals[0] if is_str else parseValueNode(vals[0][1:-1])
-  node = ValueNode(is_str, vn, op_nodes)
-  #print(node)
+
+  first = vals[0][0]
+  if first == "(":
+    typ = ValueNodeType.VALUENODE
+  elif first == "{":
+    typ = ValueNodeType.DICT
+  else:
+    typ = ValueNodeType.STRING
+
+  vn = parseValueNode(vals[0][1:-1]) if typ == ValueNodeType.VALUENODE else None
+  string = vals[0] if typ == ValueNodeType.STRING else None
+  d = parseDict(vals[0][1:]) if typ == ValueNodeType.DICT else []
+  node = ValueNode(typ, vn, string, d, op_nodes)
   return node
 
 def splitOperators(s: str) -> tuple[list[str], list[str]]:
@@ -183,6 +225,8 @@ def splitOperators(s: str) -> tuple[list[str], list[str]]:
   return ops, vals
 
 def valueRemoveFluff(s: str) -> str:
+  if s == "": 
+    return s
   s = s.lstrip().rstrip()
   if s[-1] == ';':
     return s[:-1]
@@ -272,30 +316,70 @@ def nextSyntax(s: str, i: int) -> int:
   elif s[i] == '"' or s[i] == "'":
     i = nextQuote(s, s[i], i+1)+1
   return i
+
 class AST:
   def __init__(self):
-    self.types = []
+    self.types: list[TypeNode] = []
     self.function_nodes: list[FunctionNode] = [] # function node
     self.variable_nodes: list[VariableAssignmentNode] = []
     self.type_nodes: list[TypeNode] = []
 
     self.base_nodes: list[NodeSignature] = [] 
 
+  def toC(self) -> str:
+    s = ""
+    for node in self.base_nodes:
+      if node.type == NodeType.VAR:
+        print(self.variable_nodes[node.index])
+        cvar = variableAssignNodeToCLine(self.variable_nodes[node.index])
+        s += variableAssignNodeToCLine(self.variable_nodes[node.index])
+        print(cvar)
+      elif node.type == NodeType.TYPE:
+        ctype = typeNodeToC(self.type_nodes[node.index])
+        print(ctype)
+    return s
+
 def valueNodeToCStr(node: ValueNode) -> str:
   s = ""
-  if node.is_str and type(node.value) is str:
-    s += node.value
-  elif type(node.value) is ValueNode:
-    s += f"({valueNodeToCStr(node.value)})"
+  if node.type == ValueNodeType.STRING:
+    s += node.string
+  elif node.type == ValueNodeType.VALUENODE:
+    s += f"({valueNodeToCStr(node.value_node)})"
+  elif node.type == ValueNodeType.DICT:
+    s += dictEntriesToCStr(node.dict)
   for op in node.operators:
     s += op.operator + valueNodeToCStr(op.value_node)
   return s
 
+def dictEntriesToCStr(entries: list[DictEntry], ) -> str:
+  s = "{"
+  s += ", ".join([valueNodeToCStr(entry.value) for entry in entries])
+  s += "}"
+  return s
+
+
+def getCType(ts: str) -> str:
+  return ts_type_to_ctype[ts] if ts in ts_type_to_ctype else ts
+
 def variableAssignNodeToCLine(node: VariableAssignmentNode) -> str:
   if node.type_hint == "":
     return ""
-  line = f"{ts_type_to_ctype[node.type_hint]} {node.name} = {valueNodeToCStr(node.value_node)};"
+  ctype = getCType(node.type_hint)
+  line = f"{ctype} {node.name} = {valueNodeToCStr(node.value_node)};"
   return line
+
+def typeNodeToC(node: TypeNode) -> str:
+  s = ""
+  if node.is_type:
+    if node.type_name in ts_type_to_ctype:
+      s += f"typedef {ts_type_to_ctype[node.type_name]} {node.name};"
+  else:
+    s += f"struct {node.name} {"{"}\n"
+    for ty in node.types:
+      print(ty)
+      s += f"\t{getCType(ty.type)} {ty.name};\n"
+    s += "};"
+  return s
 
 @dataclass
 class ReturnNode:
@@ -312,7 +396,7 @@ class Type:
 
 @dataclass
 class TypeNode:
-  is_type: bool
+  is_type: bool # is single type
   name: str
   type_name: str
   types: list[Type]
@@ -335,9 +419,13 @@ def stringToType(s: str) -> Type | None:
   colon = s.find(":")
   if colon == -1:
     return None
-  tp = valueRemoveFluff(s[:colon])
-  name = valueRemoveFluff(s[colon+1:])
+  name = valueRemoveFluff(s[:colon])
+  tp = valueRemoveFluff(s[colon+1:])
   return Type(tp, name)
+
+def fileName(path: str) -> str:
+  sp = path.split("/")
+  return sp[-1]
 
 def main():
   '''
@@ -354,6 +442,10 @@ def main():
       with open(fn) as f:
         content = f.read()
         node_stack: list[NodeSignature] = []
+
+        parser.parseTSCode(content)
+
+        '''
         for line in content.splitlines():
           if len(line) == 0:
             continue
@@ -362,20 +454,30 @@ def main():
           if tp == NodeType.VAR:
             #print(rest)
             node = parseVariableAssignmentLine(line, i)
-            print(variableAssignNodeToCLine(node))
+            sig = NodeSignature(NodeType.VAR, len(ast.variable_nodes))
+            if len(node_stack) == 0:
+              ast.base_nodes.append(sig)
+            if node.multi_line:
+              node_stack.append(sig)
+            ast.variable_nodes.append(node)
+            print(node)
           elif tp == NodeType.FUNCTION:
             node = parseFunctionHeader(rest)
-            current_node = node
+            sig = NodeSignature(NodeType.FUNCTION, len(ast.type_nodes))
+            node_stack.append(sig)
+            ast.function_nodes.append(node)
             print(node)
           elif tp == NodeType.RETURN:
             node = parseReturn(rest)
           elif tp == NodeType.TYPE:
             print(f"type: {rest}")
             node = parseTypeHeader(rest)
-            print(node)
-            if node.is_type:
-              node_stack.append(NodeSignature(NodeType.TYPE, len(ast.type_nodes)))
-              ast.type_nodes.append(node)
+            sig = NodeSignature(NodeType.TYPE, len(ast.type_nodes))
+            if len(node_stack) == 0:
+              ast.base_nodes.append(sig)
+            if not node.is_type:
+              node_stack.append(sig)
+            ast.type_nodes.append(node)
           elif tp == NodeType.BRACKETCLOSE:
             if len(node_stack) >= 1:
               node_stack.pop()
@@ -391,12 +493,24 @@ def main():
                 print(f"{typ}")
                 if not typ == None:
                   node.types.append(typ)
-                
-
-              #node = ast.
+              elif node_sig.type == NodeType.VAR:
+                node = ast.variable_nodes[node_sig.index]
+                if node.value_node.type == ValueNodeType.DICT:
+                  entries = parseDict(line)
+                  node.value_node.dict += entries
                 print(f"{node} {line}")
 
         print(ast)
+
+        print(ast.base_nodes)
+        print(node_stack)
+
+        c_content = ast.toC()
+        print(c_content)
+
+
+        '''
+
     except FileNotFoundError:
       print("not found")
   pass

@@ -8,6 +8,12 @@ type Position = {
 const s: Int32 = 1;
 const t: Int32 = (1+(21-s));
 
+const pos: Position = {x: 1, y: 2};
+const pos2:Position = {
+    x:8,
+    y:9
+}
+
 function cool(nums: Int32[]=[]): Position { 
     return {x:1, y:2};
 }
