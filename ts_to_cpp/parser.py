@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from enum import Enum
 
 def cleanString(s: str) -> str:
+  s = s.lstrip().rstrip()
   if s == "": 
     return s
-  s = s.lstrip().rstrip()
   if s[-1] == ';':
     return s[:-1]
   return s
@@ -103,6 +103,29 @@ def nextChar(s: str, i: int, c: str) -> int:
         i += 1
     return len(s)
 
+def nextSyntax(s: str, i: int) -> int:
+  if s[i] == '(':
+    i = nextBracket(s, i+1)+1
+  elif s[i] == '"' or s[i] == "'":
+    i = nextQuote(s, s[i], i+1)+1
+  return i
+
+# +, -, *, /
+# -1 for no operator
+def nextOperator(s: str, i: int) -> tuple[int, bool]:
+    ops = ['+', '-', '*', '/']
+    while i < len(s):
+        i = nextSyntax(s, i)
+        if i >= len(s):
+           break
+        if s[i] == ';' or s[i] == '\n':
+           return i, False
+        if any(s[i] == c for c in ops):
+           return i, True
+        
+        i += 1
+    return len(s), False
+
 def parseSingleType(s: str) -> Type | None:
     i = 0
     while i < len(s):
@@ -162,6 +185,7 @@ def parseVariableNode(code: str, i: int) -> tuple[VariableAssignmentNode, int]:
     i = nextNonSpace(code, i)
     hint = ""
     if code[i] == ":":
+        i += 1
         hint, i = nextWord(code, i)
     i = nextNonSpace(code, i)
     i += 1 # = character
@@ -171,23 +195,62 @@ def parseVariableNode(code: str, i: int) -> tuple[VariableAssignmentNode, int]:
     return VariableAssignmentNode(var_name, hint, node), i
 
 
+
+def parseDict(s: str, i: int) -> list[DictEntry]:
+    d = []
+    if s[-1] == "}":
+        s = s[:-1]
+
+    def addDictEntry(st: str):
+        if len(st) != 0:
+            e = nextChar(st, 0, ":")
+            key = cleanString(st[:e])
+            val_node = parseValueNode(cleanString(st[e+1:]), 0)
+            d.append(DictEntry(key, val_node))
+
+    while i < len(s):
+        e = nextChar(s, i, ",")
+        dict_str = cleanString(s[i:e])
+        addDictEntry(dict_str)
+        i = e+1
+    print(d)
+    return d
+   
+
 def parseValueNode(code: str, i: int) -> tuple[ValueNode, int]:
     i = nextNonSpace(code, i)
-    print(code[i])
     ty = ValueNodeType.STRING
     node = None
     s = None
     dct = None
     ops = []
+    end_op, is_op = nextOperator(code, i)
     if code[i] == '(':
+        ty = ValueNodeType.VALUENODE
         e = nextBracket(code, i)
-        #node, _ = parseValueNode()
-        print(code[i:e])
+        i += 1
+        node, _ = parseValueNode(code[i:e], 0)
+        
     elif code[i] == '{':
-        i = nextBracket(code, i, '}')
+        ty = ValueNodeType.DICT
+        e = nextBracket(code, i, '}')
+        i += 1
+        dct = parseDict(code[i:e], 0)
+        i = e+1
     else:
-       s = code
-    #parse operators
+        s = cleanString(code[i:end_op])
+        #print(f"s: {s}")
+        i = end_op
+    
+    #parsing operators
+    while is_op and i < len(code):
+        operator = code[i]
+        #print(operator)
+        i += 1
+        end_op, is_op = nextOperator(code, i)
+        vnode, _ = parseValueNode(code[i:end_op], 0)
+        ops.append(OperatorNode(operator, vnode))
+        #print(f"op_str: {code[i:end_op]}")
     
     return ValueNode(ty, node, s, dct, ops), i
 
@@ -203,7 +266,8 @@ def parseTSCode(code: str):
                 print(node)
             elif first == "const" or first == "let" or first == "var":
                 print("is const")
-                _, i = parseVariableNode(code, i)
+                node, i = parseVariableNode(code, i)
+                print(node)
             else:
                 print(f"|{first}|")
 

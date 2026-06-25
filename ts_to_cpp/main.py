@@ -374,7 +374,7 @@ def typeNodeToC(node: TypeNode) -> str:
     if node.type_name in ts_type_to_ctype:
       s += f"typedef {ts_type_to_ctype[node.type_name]} {node.name};"
   else:
-    s += f"struct {node.name} {"{"}\n"
+    s += f"struct {node.name} {'{'}\n"
     for ty in node.types:
       print(ty)
       s += f"\t{getCType(ty.type)} {ty.name};\n"

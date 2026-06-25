@@ -8,6 +8,10 @@ type Position = {
     c: Int32;
 }
 
+function a(){
+    return 1;
+}
+
 const v = 10;
 const d = (1 + 5);
 
