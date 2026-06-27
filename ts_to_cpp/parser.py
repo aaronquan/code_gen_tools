@@ -11,15 +11,28 @@ def cleanString(s: str) -> str:
   return s
 
 @dataclass
+class ObjectType:
+    name: str
+    type: Type
+
+@dataclass
 class Type:
-  type: str
-  name: str
+    name: str
+    generic: list[GenericNode]
+    is_optional: bool
+    is_pointer: bool
+
+@dataclass 
+class GenericNode:
+   name: str
+   extends: str
 
 @dataclass
 class TypeNode:
-  is_single: bool # is single type
   name: str
-  single_type: str
+  is_single: bool # is single type
+  generics: list[GenericNode]
+  single_type: Type | None
   types: list[Type]
 
 class ValueNodeType(Enum):
@@ -60,11 +73,12 @@ class VariableAssignmentNode:
   value_node: ValueNode
   #multi_line: bool
 
+#todo: globally fix types!
 
 def nextWord(s: str, i: int) -> tuple[str, int]:
     i = nextNonSpace(s, i)
     st = i
-    sp_chars = [" ", "=", "(", ":", "\n"]
+    sp_chars = [" ", "=", "(", ":", "\n", '<']
     while i < len(s):
         if any(s[i] == c for c in sp_chars):
             break
@@ -78,12 +92,19 @@ def nextQuote(s: str, qt:str="'", i:int=0) -> int:
 
   return len(s)
 
-def nextBracket(s: str, i:int=0, br=")") -> int:
+# starts without the opening bracket
+def nextBracket(s: str, i:int=0, ebr=")", obr="(") -> int:
+    bi = 0
     for j in range(i, len(s)):
         if s[j] == '"' or s[j] == "'":
             j = nextQuote(s, s[j], j)
-        if s[j] == br:
-            return j
+        if s[j] == obr:
+            bi += 1
+        elif s[j] == ebr:
+            if bi == 0:
+                return j
+            else:
+               bi -= 1
     return len(s)
 
 def nextNonSpace(s: str, i:int) -> int:
@@ -110,6 +131,15 @@ def nextSyntax(s: str, i: int) -> int:
     i = nextQuote(s, s[i], i+1)+1
   return i
 
+def nextEnd(s: str, i: int) -> int:
+    while i < len(s):
+        if s[i] == "'" or s[i] == '"':
+            i = nextQuote(s, s[i], i)
+        elif s[i] == ";" or s[i] == "\n":
+            return i
+        i += 1
+    return len(s)
+
 # +, -, *, /
 # -1 for no operator
 def nextOperator(s: str, i: int) -> tuple[int, bool]:
@@ -117,25 +147,65 @@ def nextOperator(s: str, i: int) -> tuple[int, bool]:
     while i < len(s):
         i = nextSyntax(s, i)
         if i >= len(s):
-           break
+            break
         if s[i] == ';' or s[i] == '\n':
-           return i, False
+            return i, False
         if any(s[i] == c for c in ops):
-           return i, True
-        
+            return i, True
         i += 1
     return len(s), False
 
-def parseSingleType(s: str) -> Type | None:
+def parseGenerics(s: str) -> list[GenericNode]:
+    gens = []
+    def addGen(st: str):
+        sp = st.split()
+        tp = sp[0]
+        ex = ""
+        if len(sp) >= 3 and sp[1] == "extends":
+            ex = sp[2] 
+        gens.append(GenericNode(tp, ex))
+    i = 0
+    e = nextChar(s, 0, ",")
+    while e != len(s):
+        addGen(s[i:e])
+        i = e+1
+        e = nextChar(s, e+1, ",")
+    addGen(s[i:e])
+    return gens
+
+def parseType(s: str, is_optional: bool) -> Type:
+    name = cleanString(s)
+    gens = []
+    is_pointer = False
+    opt = s.find('|')
+    if opt != -1:
+        name = cleanString(s[:opt])
+        rem = cleanString(s[opt+1:])
+        if rem == "undefined":
+            is_optional = True
+        elif rem == "null":
+            is_pointer = True
+    if name[-1] == ">":
+        o = nextChar(name, 0, "<")
+        gen_str = name[o+1:]
+        gens = parseGenerics(gen_str)
+        name = cleanString(name[:o])
+    return Type(name, gens, is_optional, is_pointer)
+
+def parseObjectType(s: str) -> ObjectType | None:
     i = 0
     while i < len(s):
         if s[i] == '"' or s[i] == "'":
             i = nextQuote(s, s[i], i)
         elif s[i] == ':':
             first = cleanString(s[0:i])
+            is_optional = False
+            if first[-1] == "?":
+               first = first[:-1]
+               is_optional = True
             second = cleanString(s[i+1:])
-            print(f"{first} {second}")
-            return Type(first, second)
+            typ = parseType(second, is_optional)
+            return ObjectType(first, typ)
         i+=1
     return None
 
@@ -151,32 +221,44 @@ def parseMultiType(code: str, i: int) -> tuple[list[Type], int]:
             j = nextQuote(rest, rest[j], j)
         elif rest[j] == ';' or rest[j] == ',':
             content = cleanString(rest[st+1:j])
-            pt = parseSingleType(content)
+            pt = parseObjectType(content)
             if pt != None:
                 types.append(pt)
             st = j
         j += 1
     last = cleanString(rest[st:j])
-    pt = parseSingleType(last)
+    pt = parseObjectType(last)
     if pt != None:
         types.append(pt)
     return types, b
 
 def parseTypeNode(code: str, i: int) -> tuple[TypeNode, int]:
     type_name, i = nextWord(code, i)
+    generics = []
+    if code[i] == "<":
+        i+=1
+        e = nextBracket(code, i, ">", "<")
+        gen_str = code[i:e]
+        generics = parseGenerics(gen_str)
+        i = e+1
+       
     i = code.find("=", i)
+    i+=1
     i = nextNonSpace(code, i)
-    single_type = ""
+    single_type = None
     is_single = True
     types = []
     if code[i] == "{":
         is_single = False
         types, i = parseMultiType(code, i)
     else:
-       single_type, i = nextWord(code, i)
-       single_type = cleanString(single_type)
+        e = nextEnd(code, i)
+        single_type_str = code[i:e]
+        #print(f"sg {single_type_str}")
+        single_type = parseType(single_type_str, False)
+        i = e+1
 
-    node = TypeNode(is_single, type_name, single_type, types)
+    node = TypeNode(type_name, is_single, generics, single_type, types)
 
     return node, i
 
@@ -226,31 +308,29 @@ def parseValueNode(code: str, i: int) -> tuple[ValueNode, int]:
     ops = []
     end_op, is_op = nextOperator(code, i)
     if code[i] == '(':
+        i += 1
         ty = ValueNodeType.VALUENODE
         e = nextBracket(code, i)
-        i += 1
         node, _ = parseValueNode(code[i:e], 0)
         
     elif code[i] == '{':
-        ty = ValueNodeType.DICT
-        e = nextBracket(code, i, '}')
         i += 1
+        ty = ValueNodeType.DICT
+        e = nextBracket(code, i+1, '}', '{')
+        print(code[i:e])
         dct = parseDict(code[i:e], 0)
         i = e+1
     else:
         s = cleanString(code[i:end_op])
-        #print(f"s: {s}")
         i = end_op
     
     #parsing operators
     while is_op and i < len(code):
         operator = code[i]
-        #print(operator)
         i += 1
         end_op, is_op = nextOperator(code, i)
         vnode, _ = parseValueNode(code[i:end_op], 0)
         ops.append(OperatorNode(operator, vnode))
-        #print(f"op_str: {code[i:end_op]}")
     
     return ValueNode(ty, node, s, dct, ops), i
 

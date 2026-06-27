@@ -3,13 +3,19 @@ type Position = {
     x: Int32;
     y: Int32;
 };type Test = {
-    a: string,
+    a?: string,
     b: string;
-    c: Int32;
+    c: Int32 | undefined;
 }
+
+type NT<T extends Int32, V> = T | null
 
 function a(){
     return 1;
+}
+
+function gen<T>(a: T): T{
+    return a;
 }
 
 const v = 10;
