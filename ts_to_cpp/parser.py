@@ -1,7 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-
+from node import FunctionNode, ParameterNode, NodeSignature, ValueNode, TypeNode, GenericNode, ObjectType
+from node import Type, VariableAssignmentNode, DictEntry, ValueNodeType, OperatorNode
 def cleanString(s: str) -> str:
   s = s.lstrip().rstrip()
   if s == "": 
@@ -9,69 +10,6 @@ def cleanString(s: str) -> str:
   if s[-1] == ';':
     return s[:-1]
   return s
-
-@dataclass
-class ObjectType:
-    name: str
-    type: Type
-
-@dataclass
-class Type:
-    name: str
-    generic: list[GenericNode]
-    is_optional: bool
-    is_pointer: bool
-
-@dataclass 
-class GenericNode:
-   name: str
-   extends: str
-
-@dataclass
-class TypeNode:
-  name: str
-  is_single: bool # is single type
-  generics: list[GenericNode]
-  single_type: Type | None
-  types: list[Type]
-
-class ValueNodeType(Enum):
-  STRING = 0
-  VALUENODE = 1
-  DICT = 2
-
-@dataclass
-class DictEntry:
-  key: str
-  value: ValueNode
-
-@dataclass
-class OperatorNode:
-  operator: str
-  value_node: ValueNode
-
-@dataclass
-class ValueNode:
-  type: ValueNodeType
-  #is_str: bool
-  value_node: ValueNode | None
-  string: str | None
-  dict: list[DictEntry]
-  operators: list[OperatorNode]
-
-# 1 + 1 -> VN(OP(+, VN(1), VN(1)))
-
-class ValueNodeType(Enum):
-  STRING = 0
-  VALUENODE = 1
-  DICT = 2
-
-@dataclass
-class VariableAssignmentNode:
-  name: str
-  type_hint: str
-  value_node: ValueNode
-  #multi_line: bool
 
 #todo: globally fix types!
 
@@ -140,20 +78,25 @@ def nextEnd(s: str, i: int) -> int:
         i += 1
     return len(s)
 
-# +, -, *, /
+# +, -, *, /, ==
 # -1 for no operator
-def nextOperator(s: str, i: int) -> tuple[int, bool]:
-    ops = ['+', '-', '*', '/']
+def nextOperator(s: str, i: int) -> tuple[str, int, bool]:
+    ops = ['+', '-', '*', '/', '=', ">"]
     while i < len(s):
         i = nextSyntax(s, i)
         if i >= len(s):
             break
         if s[i] == ';' or s[i] == '\n':
-            return i, False
+            return "", i, False
         if any(s[i] == c for c in ops):
-            return i, True
+            op = s[i]
+            i += 1
+            while i < len(s) and any(s[i] == c for c in ops):
+                op += s[i]
+                i += 1
+            return op, i, True
         i += 1
-    return len(s), False
+    return "", len(s), False
 
 def parseGenerics(s: str) -> list[GenericNode]:
     gens = []
@@ -287,7 +230,7 @@ def parseDict(s: str, i: int) -> list[DictEntry]:
         if len(st) != 0:
             e = nextChar(st, 0, ":")
             key = cleanString(st[:e])
-            val_node = parseValueNode(cleanString(st[e+1:]), 0)
+            val_node, _ = parseValueNode(cleanString(st[e+1:]), 0)
             d.append(DictEntry(key, val_node))
 
     while i < len(s):
@@ -297,21 +240,33 @@ def parseDict(s: str, i: int) -> list[DictEntry]:
         i = e+1
     print(d)
     return d
-   
 
 def parseValueNode(code: str, i: int) -> tuple[ValueNode, int]:
     i = nextNonSpace(code, i)
     ty = ValueNodeType.STRING
     node = None
     s = None
-    dct = None
+    dct = []
     ops = []
-    end_op, is_op = nextOperator(code, i)
+    op, end_op, is_op = nextOperator(code, i)
     if code[i] == '(':
+        #determine between lamba function and value
+        
         i += 1
-        ty = ValueNodeType.VALUENODE
-        e = nextBracket(code, i)
-        node, _ = parseValueNode(code[i:e], 0)
+        print(op)
+        if op == "=>":
+            ty = ValueNodeType.FUNCTION
+            #parse lambda function
+            e = nextBracket(code, i)
+            print(f"param: {code[i-1:e+1]}")
+            print("is lambda function")
+            parseParameters(code[i:e])
+            is_op = False
+        else:
+            ty = ValueNodeType.VALUENODE
+            e = nextBracket(code, i)
+            print(f"{i} {e}")
+            node, _ = parseValueNode(code[i:e], 0)
         
     elif code[i] == '{':
         i += 1
@@ -326,13 +281,59 @@ def parseValueNode(code: str, i: int) -> tuple[ValueNode, int]:
     
     #parsing operators
     while is_op and i < len(code):
-        operator = code[i]
+        #operator = code[i]
         i += 1
-        end_op, is_op = nextOperator(code, i)
+        op, end_op, is_op = nextOperator(code, i)
         vnode, _ = parseValueNode(code[i:end_op], 0)
-        ops.append(OperatorNode(operator, vnode))
+        ops.append(OperatorNode(op, vnode))
     
     return ValueNode(ty, node, s, dct, ops), i
+
+def parseParameters(s: str) -> list[ParameterNode]:
+    print(s)
+    params = []
+    i = 0
+    while i < len(s):
+        e = nextChar(s, i, ",")
+        #print(e)
+        param_str = cleanString(s[i:e])
+        print(param_str)
+        if len(param_str) != 0:
+            node = parseSingleParameter(s[i:e])
+            params.append(node)
+        i = e+1
+
+    #node = ParameterNode()
+    return params
+
+def parseSingleParameter(s: str) -> ParameterNode:
+
+    c = nextChar(s, 0, ":")
+    name = cleanString(s[:c])
+    is_optional = False
+    if name[-1] == "?":
+        name = name[:-1]
+        is_optional = True
+    type_name = cleanString(s[c+1:])
+    print(type_name)
+    default = None
+    eq = nextChar(type_name, c, "=")
+    if eq != len(type_name):
+        val_str = cleanString(type_name[eq+1:])
+        print(f"eq: {val_str} {eq}")
+        default, _ = parseValueNode(val_str, 0)
+        type_name = type_name[:eq]
+    type_node = parseType(type_name, is_optional)
+    return ParameterNode(name, type_node, default)
+
+
+def parseStandardFunctionNode() -> FunctionNode:
+    pass
+
+def parseFunctionBody() -> list[NodeSignature]:
+    sigs = []
+
+    return sigs
 
 def parseTSCode(code: str):
     i = 0

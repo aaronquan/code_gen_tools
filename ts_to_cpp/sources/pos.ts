@@ -8,6 +8,8 @@ type Position = {
     c: Int32 | undefined;
 }
 
+const vd = () => {};
+
 type NT<T extends Int32, V> = T | null
 
 function a(){
